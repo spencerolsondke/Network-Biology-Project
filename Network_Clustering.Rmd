@@ -1,0 +1,66 @@
+```{r}
+BiocManager::install(c("igraph", "RCy3", "clusterProfiler", "org.Hs.eg.db"))
+library(RCy3)
+library(igraph)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+
+
+cytoscapePing ()
+```
+
+```{r}
+networkSuid = getNetworkSuid()
+```
+
+```{r}
+library('RColorBrewer')
+clustermaker <- paste("cluster glay createGroups=FALSE network=SUID:",networkSuid, sep="")
+res <- commandsGET(clustermaker)
+num <- as.numeric(gsub("Clusters: ", "", res[1]))
+
+clusters <- RCy3::getTableColumns(columns = c("name", "__glayCluster"), network = networkSuid)
+colnames(clusters) <- c("gene", "cluster")
+cluster.size <- clusters %>% group_by(cluster) %>% summarise(num_genes = n())
+colors <- brewer.pal(min(nrow(cluster.size), 10), "Set3")
+
+RCy3::lockNodeDimensions(TRUE)
+RCy3::setNodeShapeDefault("ELLIPSE")
+
+for(i in 1:nrow(cluster.size)) {
+  i<-4
+  setCurrentNetwork(network=networkSuid)
+  clearSelection(network=networkSuid)
+  current_cluster <- cluster.size$cluster[i]
+  selectNodes(network=networkSuid, current_cluster, by.col="__glayCluster")
+
+  subnetwork_suid <- createSubnetwork(nodes="selected", network=networkSuid)
+  renameNetwork(paste("Glay_Cluster",current_cluster,"_Subnetwork", sep=""), network=as.numeric(subnetwork_suid))
+  layoutNetwork()
+}
+```
+
+```{r}
+BiocManager::install(c("RCy3"))
+library(RCy3)
+```
+
+```{r}
+clearSelection()
+copyVisualStyle("default", "diffusion")
+setVisualStyle("diffusion")
+deleteStyleMapping("diffusion","NODE_FILL_COLOR")
+disease.score.table <- getTableColumns('node','disease score')
+top.nodes <- row.names(disease.score.table)[disease.score.table$`disease score` == 5.0]
+selectNodes(top.nodes)
+setNodeBorderColorBypass(top.nodes,"#FF55AA")
+setNodeBorderWidthBypass(top.nodes,5)
+
+diffusionBasic()
+clearSelection()
+setNodeColorMapping("diffusion_output_heat", c(0,0.5), c("#FFFFFF", "#006699"), style="diffusion")
+```
+
+```{r}
+install.packages('linkprediction')
+```
